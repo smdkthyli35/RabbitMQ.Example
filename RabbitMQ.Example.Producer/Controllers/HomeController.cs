@@ -20,6 +20,8 @@ namespace RabbitMQ.Example.Producer.Controllers
         private IModel channel => CreateChannel();
         private const string EXCHANGE_NAME = "exchange_name";
         private const string QUEUE_NAME = "queue_name";
+        private const string FANOUT_ROUTING_KEY = "fanout_routing_key";
+        private const string EXCHANGE_FANOUT_NAME = "fanout_exchange_name";
 
         public HomeController()
         {
@@ -32,6 +34,35 @@ namespace RabbitMQ.Example.Producer.Controllers
             DirectExchange();
             connection.Close();
             return Ok();
+        }
+
+        [HttpGet]
+        [Route("getfanout")]
+        public IActionResult GetFanout(string queue_name)
+        {
+            FanoutExchange(queue_name);
+            connection.Close();
+            return Ok();
+        }
+
+        private void FanoutExchange(string queue_name)
+        {
+            byte[] data = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new Users
+            {
+                Id = 1,
+                Name = "Admin",
+                Password = "1234"
+            }));
+
+            channel.ExchangeDeclare(EXCHANGE_FANOUT_NAME, ExchangeType.Fanout);
+            channel.QueueDeclare(queue: queue_name,
+                                 durable: false,
+                                 exclusive: false,
+                                 autoDelete: false,
+                                 arguments: null);
+
+            channel.QueueBind(queue_name, EXCHANGE_FANOUT_NAME, FANOUT_ROUTING_KEY);
+            channel.BasicPublish(EXCHANGE_FANOUT_NAME, FANOUT_ROUTING_KEY, null, data);
         }
 
         private void DirectExchange()
