@@ -31,7 +31,8 @@ namespace RabbitMQ.Example.Producer.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            DirectExchange();
+            //DirectExchange();
+            HeaderExchange();
             connection.Close();
             return Ok();
         }
@@ -43,6 +44,38 @@ namespace RabbitMQ.Example.Producer.Controllers
             FanoutExchange(queue_name);
             connection.Close();
             return Ok();
+        }
+
+        private void HeaderExchange()
+        {
+            byte[] data = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new Users
+            {
+                Id = 1,
+                Name = "Samed",
+                Password = "1234"
+            }));
+
+            channel.ExchangeDeclare(EXCHANGE_NAME, ExchangeType.Headers);
+            channel.QueueDeclare(queue: QUEUE_NAME,
+                                 durable: false,
+                                 exclusive: false,
+                                 autoDelete: true,
+                                 arguments: null);
+            channel.QueueBind(QUEUE_NAME, EXCHANGE_NAME, string.Empty, new Dictionary<string, object>
+            {
+                {"x-match","all"},
+                {"op","convert"},
+                {"format","png"}
+            });
+
+            var props = channel.CreateBasicProperties();
+            props.Headers = new Dictionary<string, object>()
+            {
+                {"op","convert"},
+                {"format","png"}
+            };
+
+            channel.BasicPublish(EXCHANGE_NAME, string.Empty, props, data);
         }
 
         private void FanoutExchange(string queue_name)
